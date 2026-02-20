@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-02-20T11:44:04.004563Z",
+  "generated_at": "2026-02-20T16:17:03.155773Z",
   "count": 3,
   "strategies": [
     {
@@ -10,11 +10,11 @@
         "levels": 5,
         "spacing": 0.005
       },
-      "expected_roi": 0.0203,
-      "sharpe_ratio": 2.31,
-      "max_drawdown": 0.0245,
-      "win_rate": 0.5079,
-      "confidence_score": 68.04
+      "expected_roi": 0.0225,
+      "sharpe_ratio": 2.49,
+      "max_drawdown": 0.0263,
+      "win_rate": 0.5,
+      "confidence_score": 70.29
     },
     {
       "priority": 2,
@@ -24,25 +24,25 @@
         "long_period": 50,
         "short_period": 10
       },
-      "expected_roi": 0.1825,
-      "sharpe_ratio": 2.92,
+      "expected_roi": 0.1837,
+      "sharpe_ratio": 2.82,
       "max_drawdown": 0.1778,
       "win_rate": 0,
-      "confidence_score": 58.41
+      "confidence_score": 57.18
     },
     {
       "priority": 3,
-      "pair": "ORCA/USDT",
-      "strategy": "SMA_10_50",
+      "pair": "BTC/USDT",
+      "strategy": "GRID_5_0.005",
       "params": {
-        "long_period": 50,
-        "short_period": 10
+        "levels": 5,
+        "spacing": 0.005
       },
-      "expected_roi": 0.3491,
-      "sharpe_ratio": 3.36,
-      "max_drawdown": 0.2818,
-      "win_rate": 0.25,
-      "confidence_score": 47.97
+      "expected_roi": 0.0052,
+      "sharpe_ratio": 0.72,
+      "max_drawdown": 0.0205,
+      "win_rate": 0.4486,
+      "confidence_score": 45.45
     }
   ]
 }
