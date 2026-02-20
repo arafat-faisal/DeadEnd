@@ -9,10 +9,10 @@ import seaborn as sns
 from pathlib import Path
 from tabulate import tabulate
 
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import landscape, letter
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from pathlib import Path
+from tabulate import tabulate
+
+from core.reports import ReportGenerator, TradeRecord
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))
@@ -22,100 +22,7 @@ from utils.database import get_database
 from research.backtester import Backtester
 from research.strategy_generator import StrategyParams, StrategyType
 
-def generate_pdf_report(md_text, report_data, mc_results, trade_stats_list):
-    doc = SimpleDocTemplate("report.pdf", pagesize=landscape(letter),
-                            rightMargin=30, leftMargin=30,
-                            topMargin=30, bottomMargin=18)
-    styles = getSampleStyleSheet()
-    
-    title_style = ParagraphStyle('TitleStyle', parent=styles['Heading1'], fontSize=20, spaceAfter=20)
-    h2_style = ParagraphStyle('H2Style', parent=styles['Heading2'], fontSize=16, spaceAfter=10)
-    normal_style = styles["Normal"]
-    
-    Story = []
-    
-    Story.append(Paragraph("🩺 Elite Trading System: The Ultimate Quant Autopsy Report", title_style))
-    Story.append(Paragraph("<b>Dissecting the Truth Behind Priority Top 5 Models</b>", styles['Heading3']))
-    Story.append(Paragraph(
-        "Rigorous simulation across the most recent 800 15m candles or actual DB trades to break the strategy apart. "
-        "Enforcing strict parameters: 10x Leverage, 0.1% Comms, 0.05% Slippage, and 0.01%/8h Funding Simulation.",
-        normal_style))
-    Story.append(Spacer(1, 12))
-    
-    # Aggregate Metrics
-    Story.append(Paragraph("Aggregate Backtest Metrics", h2_style))
-    
-    if report_data:
-        headers = list(report_data[0].keys())
-        table_data = [headers] + [[str(x) for x in row.values()] for row in report_data]
-        t = Table(table_data)
-        t.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,0), colors.grey),
-            ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
-            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
-            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0,0), (-1,0), 10),
-            ('BOTTOMPADDING', (0,0), (-1,0), 8),
-            ('BACKGROUND', (0,1), (-1,-1), colors.whitesmoke),
-            ('GRID', (0,0), (-1,-1), 1, colors.black)
-        ]))
-        Story.append(t)
-    Story.append(Spacer(1, 20))
-    
-    # Trade P&L Stats
-    Story.append(Paragraph("Trade-Level P&L Breakdown", h2_style))
-    if trade_stats_list:
-        headers_trade = list(trade_stats_list[0].keys())
-        t_data_trade = [headers_trade] + [[str(x) for x in row.values()] for row in trade_stats_list]
-        t_trade = Table(t_data_trade)
-        t_trade.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,0), colors.darkblue),
-            ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
-            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
-            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0,0), (-1,0), 10),
-            ('BOTTOMPADDING', (0,0), (-1,0), 8),
-            ('BACKGROUND', (0,1), (-1,-1), colors.lightgrey),
-            ('GRID', (0,0), (-1,-1), 1, colors.black)
-        ]))
-        Story.append(t_trade)
-    Story.append(Spacer(1, 20))
-
-    # Monte Carlo Stats
-    Story.append(Paragraph("Risk Analysis: Monte Carlo Path Simulations (100x)", h2_style))
-    if mc_results:
-        headers_mc = list(mc_results[0].keys())
-        t_data_mc = [headers_mc] + [[str(x) for x in row.values()] for row in mc_results]
-        t_mc = Table(t_data_mc)
-        t_mc.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,0), colors.maroon),
-            ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
-            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
-            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0,0), (-1,0), 10),
-            ('BOTTOMPADDING', (0,0), (-1,0), 8),
-            ('BACKGROUND', (0,1), (-1,-1), colors.whitesmoke),
-            ('GRID', (0,0), (-1,-1), 1, colors.black)
-        ]))
-        Story.append(t_mc)
-    Story.append(Spacer(1, 20))
-
-    # Visuals
-    Story.append(Paragraph("The Anatomy: Visual Diagnostics", h2_style))
-    try:
-        from reportlab.lib.units import inch
-        Story.append(Image("equity.png", width=7.0 * inch, height=4.0 * inch))
-        Story.append(Spacer(1, 10))
-        Story.append(Image("heatmap.png", width=5.0 * inch, height=3.0 * inch))
-    except Exception as e:
-        print("Could not embed plots in PDF:", e)
-        
-    Story.append(Spacer(1, 20))
-    Story.append(Paragraph("Surgeon's Final Recommendations", h2_style))
-    Story.append(Paragraph("1. Check 95% VaR / Liquidation Probability. Consider dynamic sizing.", normal_style))
-    Story.append(Paragraph("2. Paper Trade Top Performers before committing huge equity.", normal_style))
-    
-    doc.build(Story)
+# Custom PDF generation removed in favor of core.reports.ReportGenerator
 
 
 def main():
@@ -142,9 +49,12 @@ def main():
 
     top_5 = priority_list['strategies'][:5]
 
-    # 3. Initialize Backtester
+    # 3. Initialize Backtester and Reporter
     bt = Backtester(commission=0.001, slippage=0.0005)
     db = get_database()
+    
+    report_generator = ReportGenerator()
+    report_generator.initialize("autopsy", 1000.0)
     
     report_data = []
     mc_results = []
@@ -239,6 +149,36 @@ def main():
             s = pd.Series(trade_series).fillna(0)
             actual_returns = s * 10 # Apply 10x lev
             
+            # Feed to master reporter
+            for t in real_trades:
+                entry_dt = t.get('created_at', '2020-01-01 00:00:00')
+                try:
+                    import dateutil.parser
+                    entry_dt = dateutil.parser.parse(entry_dt)
+                except:
+                    import datetime
+                    entry_dt = datetime.datetime.now()
+                tr = TradeRecord(
+                    trade_id=t.get('order_id', 'db_trade'),
+                    pair=pair,
+                    strategy=strat_name,
+                    side=t['side'],
+                    entry_time=entry_dt,
+                    exit_time=entry_dt,  # Approximation since db trades log single exec
+                    entry_price=t['price'],
+                    exit_price=t['price'] * (1 + (t.get('cost',0) * 0.001)),
+                    size=t['amount'],
+                    pnl_usdt=t.get('cost', 0) if t['side'] == 'sell' else 0,
+                    pnl_percent=0.0,
+                    fee_usdt=t.get('fee', 0),
+                    mae_percent=0.0,
+                    mfe_percent=0.0,
+                    holding_bars=0,
+                    entry_reason="actual",
+                    exit_reason="actual"
+                )
+                report_generator.add_trade(tr)
+            
             trade_stats_list.append({
                 'Strategy': strat_name,
                 'Pair': pair,
@@ -289,6 +229,11 @@ def main():
             })
             
             actual_returns = df['strategy_returns'].dropna()
+            
+            # Extract rigorous trades to global reporter
+            extracted = bt._extract_trades(df, strat, pair)
+            for et in extracted:
+                report_generator.add_trade(et)
 
         # Aggregate Stats
         res = bt._calculate_metrics(df, strat, pair)
@@ -398,13 +343,12 @@ def main():
     with open('quant_autopsy.md', 'w', encoding='utf-8') as f:
         f.write(md)
 
-    try:
-        generate_pdf_report(md, report_data, mc_results, trade_stats_list)
-        print("PDF accurately generated using ReportLab!")
-    except Exception as e:
-        print("Error during PDF Generation:", e)
+    print("[5] Generating Unified Professional Reports...")
+    report_generator.finalize(1000.0)
+    report_generator.generate_all("autopsy_report")
+    report_generator.save_last_run()
         
-    print("Report generated successfully: quant_autopsy.md, equity.png, heatmap.png, report.pdf !")
+    print("Report generated successfully! Check reports/ directory for autopsy_report (PDF, HTML, MD).")
 
 if __name__ == '__main__':
     main()

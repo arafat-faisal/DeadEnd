@@ -23,6 +23,7 @@ from research.data_pipeline import get_data_pipeline
 from utils.logger import get_logger, setup_logging
 from utils.database import get_database
 from utils.telegram import TelegramNotifier
+from core.reports import ReportGenerator, TradeRecord
 
 logger = get_logger('engine')
 
@@ -68,7 +69,8 @@ class TradingEngine:
         self,
         mode: EngineMode = EngineMode.TRADING,
         exchange_type: ExchangeType = ExchangeType.BINANCE,
-        paper_mode: bool = None
+        paper_mode: bool = None,
+        report_mode: str = 'none'
     ):
         # Setup
         self.settings = get_settings()
@@ -77,6 +79,7 @@ class TradingEngine:
         self.mode = mode
         self.exchange_type = exchange_type
         self.paper_mode = paper_mode if paper_mode is not None else self.settings.is_paper_mode
+        self.report_mode = report_mode
         
         # Components
         self.executor = OrderExecutor(exchange_type, self.paper_mode)
@@ -92,6 +95,10 @@ class TradingEngine:
         self._shutdown_event = threading.Event()
         self._current_signals: List[TradingSignal] = []
         self._active_grids: Dict[str, Any] = {}
+        
+        # Reporting
+        self.report_generator = ReportGenerator()
+        self._active_positions_tracking: Dict[str, Dict[str, Any]] = {}
         
         # Register signal handlers
         signal.signal(signal.SIGINT, self._signal_handler)
@@ -145,8 +152,12 @@ class TradingEngine:
         
         logger.info(f"Generated {len(strategies)} strategy combinations")
         
+        # Initialize reporting for this research run
+        balance_start = self.executor.get_balance().get('USDT', 0)
+        self.report_generator.initialize(mode=self.mode.value, start_balance=balance_start)
+        
         # Run backtests
-        results = self.backtester.run_batch(pairs, strategies, timeframe, limit)
+        results = self.backtester.run_batch(pairs, strategies, timeframe, limit, report_generator=self.report_generator)
         
         # Generate priority list
         entries = self.priority_manager.generate()
@@ -170,6 +181,9 @@ class TradingEngine:
             StrategyType.GRID,
             StrategyType.SCALPING
         ]
+        
+        # In engine.py run_quick_research it gets stuck because generate_all is a generator, 
+        # but let's make sure the constraints aren't blocking it.
         strategies = list(generator.generate_all(strategy_types))
         
         if pairs is None:
@@ -180,7 +194,7 @@ class TradingEngine:
         logger.info(f"Starting quick research: {len(pairs)} pairs, {len(strategies)} strategies")
         
         # Run backtests
-        results = self.backtester.run_batch(pairs, strategies, '15m', 800)
+        results = self.backtester.run_batch(pairs, strategies, '15m', 800, report_generator=self.report_generator)
         
         # Generate priority list
         entries = self.priority_manager.generate(limit=10)
@@ -280,6 +294,18 @@ class TradingEngine:
                     entry_price=order.average_price,
                     side='buy'
                 )
+                
+                # Report tracking
+                self._active_positions_tracking[signal.pair] = {
+                    'entry_time': datetime.now(timezone.utc),
+                    'entry_price': order.average_price,
+                    'size': order.filled_amount,
+                    'side': 'long',  # simple long assumption for now
+                    'strategy': signal.strategy,
+                    'mfe_price': order.average_price,
+                    'mae_price': order.average_price
+                }
+                
                 return True
         
         elif signal.signal_type == SignalType.SELL:
@@ -296,6 +322,39 @@ class TradingEngine:
                 
                 if order.status == OrderStatus.FILLED:
                     self.risk_manager.close_position(signal.pair, order.average_price)
+                    
+                    # Report tracking
+                    if signal.pair in self._active_positions_tracking:
+                        pos = self._active_positions_tracking.pop(signal.pair)
+                        exit_price = order.average_price
+                        pnl_usdt = (exit_price - pos['entry_price']) * pos['size']
+                        pnl_percent = ((exit_price - pos['entry_price']) / pos['entry_price']) * 100 * (10 if self.executor.futures else 1) # assuming 10x lev
+                        
+                        mae_percent = ((pos['mae_price'] - pos['entry_price']) / pos['entry_price']) * 100 * (10 if self.executor.futures else 1)
+                        mfe_percent = ((pos['mfe_price'] - pos['entry_price']) / pos['entry_price']) * 100 * (10 if self.executor.futures else 1)
+                        fee_usdt = (pos['size'] * pos['entry_price'] * 0.001) + (pos['size'] * exit_price * 0.001) # Approx 0.1% each leg
+                        
+                        trade = TradeRecord(
+                            trade_id=f"T_{int(time.time()*1000)}",
+                            pair=signal.pair,
+                            strategy=pos['strategy'],
+                            side=pos['side'],
+                            entry_time=pos['entry_time'],
+                            exit_time=datetime.now(timezone.utc),
+                            entry_price=pos['entry_price'],
+                            exit_price=exit_price,
+                            size=pos['size'],
+                            pnl_usdt=pnl_usdt - fee_usdt,
+                            pnl_percent=pnl_percent,
+                            fee_usdt=fee_usdt,
+                            mae_percent=mae_percent,
+                            mfe_percent=mfe_percent,
+                            holding_bars=0, # Live doesn't use bars easily, keeping 0
+                            entry_reason="signal",
+                            exit_reason="signal"
+                        )
+                        self.report_generator.add_trade(trade)
+                    
                     return True
         
         return False
@@ -368,6 +427,21 @@ class TradingEngine:
                 
                 # Generate signals from priority list
                 for entry in entries[:3]:  # Top 3 strategies
+                    
+                    # Update MAE/MFE for active tracking before processing new signals
+                    if entry.pair in self._active_positions_tracking:
+                        df_curr = self.pipeline.fetch_ohlcv(entry.pair, '1m', 1)
+                        if not df_curr.empty:
+                            curr_high = df_curr['high'].iloc[-1]
+                            curr_low = df_curr['low'].iloc[-1]
+                            pos = self._active_positions_tracking[entry.pair]
+                            if pos['side'] == 'long':
+                                pos['mfe_price'] = max(pos['mfe_price'], curr_high)
+                                pos['mae_price'] = min(pos['mae_price'], curr_low)
+                            else:
+                                pos['mfe_price'] = min(pos['mfe_price'], curr_low)
+                                pos['mae_price'] = max(pos['mae_price'], curr_high)
+                                
                     # Map strategy string to StrategyType properly
                     st_val = entry.strategy.split('_')[0]
                     if st_val == "SMA":
@@ -446,6 +520,9 @@ class TradingEngine:
         
         logger.info(f"Starting Trading Engine in {mode.value} mode")
         
+        balance_start = self.executor.get_balance().get('USDT', 0)
+        self.report_generator.initialize(mode=mode.value, start_balance=balance_start)
+        
         try:
             if mode == EngineMode.RESEARCH:
                 self.run_research(pairs)
@@ -484,3 +561,12 @@ class TradingEngine:
             logger.info(f"Final Balance: {balance.get('USDT', 0)} USDT")
         
         logger.info("Engine shutdown complete")
+        
+        # Fire off reports
+        if self.report_mode == 'full':
+            logger.info("Generating full run reports...")
+            self.report_generator.finalize(balance.get('USDT', 0))
+            prefix = f"{self.mode.value}_report"
+            self.report_generator.generate_all(prefix)
+            self.report_generator.save_last_run()
+            logger.info(f"Reports available in 'reports/' directory with prefix '{prefix}'")

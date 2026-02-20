@@ -10,11 +10,13 @@ import pandas as pd
 from dataclasses import dataclass
 from typing import Dict, Any, Optional, List, Tuple
 from datetime import datetime
+import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import warnings
 
 from research.strategy_generator import StrategyParams, StrategyType
 from research.data_pipeline import get_data_pipeline
+from core.reports import ReportGenerator, TradeRecord
 from utils.logger import get_logger
 from utils.database import get_database
 
@@ -410,6 +412,84 @@ class Backtester:
             test_end=test_end,
             timeframe='1h'
         )
+        
+    def _extract_trades(self, df: pd.DataFrame, strategy: StrategyParams, pair: str) -> List[TradeRecord]:
+        """Extract exact trades from a vectorized backtest for reporting."""
+        trades = []
+        if 'position' not in df.columns:
+            return trades
+            
+        df = df.reset_index(drop=True)
+        in_position = False
+        entry_idx = 0
+        entry_price = 0.0
+        mae_min = float('inf')
+        mfe_max = 0.0
+        
+        for i in range(len(df)):
+            pos = df.iloc[i]['position']
+            price = df.iloc[i]['close']
+            high = df.iloc[i]['high']
+            low = df.iloc[i]['low']
+            
+            if pos != 0 and not in_position:
+                # Entry
+                in_position = True
+                entry_idx = i
+                entry_price = price
+                mae_min = low
+                mfe_max = high
+                
+            elif pos != 0 and in_position:
+                # Holding
+                mae_min = min(mae_min, low)
+                mfe_max = max(mfe_max, high)
+                
+            elif pos == 0 and in_position:
+                # Exit
+                in_position = False
+                exit_price = price
+                
+                # Assume 10x leverage
+                leveraged_pnl = ((exit_price - entry_price) / entry_price) * 10
+                fee_approx = (entry_price * 0.001) + (exit_price * 0.001) # simple 0.1% per leg
+                pnl_percent = leveraged_pnl * 100
+                mae_percent = ((mae_min - entry_price) / entry_price) * 10 * 100
+                mfe_percent = ((mfe_max - entry_price) / entry_price) * 10 * 100
+                
+                # Assume 1 USDT size allocation equivalent for % scaling
+                size = 1.0 
+                pnl_usdt = ((pnl_percent / 100) * size) - fee_approx
+                
+                try:
+                    entry_time = pd.to_datetime(df.iloc[entry_idx]['timestamp'], unit='ms', utc=True)
+                    exit_time = pd.to_datetime(df.iloc[i]['timestamp'], unit='ms', utc=True)
+                except Exception:
+                    entry_time = datetime.now()
+                    exit_time = datetime.now()
+                
+                tr = TradeRecord(
+                    trade_id=f"BT_{int(time.time()*1000)}_{len(trades)}",
+                    pair=pair,
+                    strategy=strategy.name,
+                    side="long", # simple assumption for vector tests
+                    entry_time=entry_time,
+                    exit_time=exit_time,
+                    entry_price=entry_price,
+                    exit_price=exit_price,
+                    size=size,
+                    pnl_usdt=pnl_usdt,
+                    pnl_percent=pnl_percent,
+                    fee_usdt=fee_approx,
+                    mae_percent=mae_percent,
+                    mfe_percent=mfe_percent,
+                    holding_bars=i - entry_idx,
+                    entry_reason="signal",
+                    exit_reason="signal"
+                )
+                trades.append(tr)
+                
+        return trades
     
     def run(
         self,
@@ -484,6 +564,9 @@ class Backtester:
                 win_rate=result.win_rate
             )
             
+            # Attach trades to result object so batch runner can collect them
+            result.trades = self._extract_trades(df, strategy, pair)
+            
             return result
             
         except Exception as e:
@@ -496,7 +579,8 @@ class Backtester:
         strategies: List[StrategyParams],
         timeframe: str = '1h',
         limit: int = 1000,
-        parallel: bool = False
+        parallel: bool = False,
+        report_generator: ReportGenerator = None
     ) -> List[BacktestResult]:
         """
         Run multiple backtests.
@@ -522,10 +606,18 @@ class Backtester:
                 result = self.run(pair, strategy, timeframe, limit)
                 if result:
                     results.append(result)
+                    
+                    if report_generator and hasattr(result, 'trades'):
+                        for trade in result.trades:
+                            report_generator.add_trade(trade)
                 
                 completed += 1
                 if completed % 10 == 0:
                     logger.info(f"Progress: {completed}/{total} ({completed/total*100:.1f}%)")
         
         logger.info(f"Batch complete: {len(results)}/{total} successful")
+        
+        if report_generator and report_generator.current_data:
+            report_generator.finalize(report_generator.current_data.start_balance + sum(t.pnl_usdt for t in report_generator.current_data.trades))
+            
         return results

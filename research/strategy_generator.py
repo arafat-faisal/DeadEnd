@@ -90,7 +90,7 @@ class StrategyGenerator:
     def generate_sma_crossover(self) -> Generator[StrategyParams, None, None]:
         """Generate SMA crossover strategy variants"""
         for short, long in product(self.config.ma_short_periods, self.config.ma_long_periods):
-            if short >= long:
+            if short >= long and len(self.config.ma_short_periods) > 1:
                 continue
             
             name = f"SMA_{short}_{long}"
@@ -106,7 +106,7 @@ class StrategyGenerator:
     def generate_ema_crossover(self) -> Generator[StrategyParams, None, None]:
         """Generate EMA crossover strategy variants"""
         for short, long in product(self.config.ma_short_periods, self.config.ma_long_periods):
-            if short >= long:
+            if short >= long and len(self.config.ma_short_periods) > 1:
                 continue
             
             name = f"EMA_{short}_{long}"
@@ -144,7 +144,7 @@ class StrategyGenerator:
             self.config.macd_slow,
             self.config.macd_signal
         ):
-            if fast >= slow:
+            if fast >= slow and len(self.config.macd_fast) > 1:
                 continue
             
             name = f"MACD_{fast}_{slow}_{signal}"
@@ -174,7 +174,7 @@ class StrategyGenerator:
     def generate_combined(self) -> Generator[StrategyParams, None, None]:
         """Generate combined strategies (MA + RSI filter)"""
         for short, long in product(self.config.ma_short_periods, self.config.ma_long_periods):
-            if short >= long:
+            if short >= long and len(self.config.ma_short_periods) > 1:
                 continue
             
             for rsi_period, oversold, overbought in product(

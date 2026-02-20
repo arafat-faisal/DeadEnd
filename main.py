@@ -118,6 +118,13 @@ Examples:
         help='Enable Telegram alerts (requires TELEGRAM_TOKEN and TELEGRAM_CHAT_ID in .env)'
     )
     
+    parser.add_argument(
+        '--report',
+        choices=['none', 'full', 'last'],
+        default='none',
+        help='Generate extremely detailed post-run reports: none, full, last (re-render without running)'
+    )
+    
     return parser.parse_args()
 
 
@@ -184,13 +191,16 @@ def run_research_mode(args, engine: TradingEngine):
     """Run research/backtesting mode"""
     logger.info("Starting Research Mode")
     
-    if args.quick:
-        results = engine.run_quick_research(args.pairs)
-    else:
-        results = engine.run_research(
-            pairs=args.pairs,
-            max_strategies=args.max_strategies
-        )
+    results = engine.run_research(
+        pairs=args.pairs,
+        max_strategies=30 if getattr(args, 'quick', False) else args.max_strategies
+    )
+    
+    if args.report == 'full':
+        print("\nGenerating Research Reports...")
+        engine.report_generator.generate_all("research_report")
+        engine.report_generator.save_last_run()
+        print("✅ Reports generated successfully in 'reports/' directory.")
     
     print(f"\n✅ Research complete: {len(results)} strategies tested")
     print("Priority list saved to data/priority_list.json")
@@ -242,6 +252,18 @@ def main():
     if args.mode == 'status':
         print_status()
         return
+
+    # Handle immediate report regeneration
+    if getattr(args, 'report', 'none') == 'last':
+        from core.reports import ReportGenerator
+        logger.info("Executing standalone report regeneration for the last run...")
+        rg = ReportGenerator()
+        if rg.load_last_run():
+            rg.generate_all("last_report_regenerated")
+            print("\n✅ Standalone report generation complete. Check 'reports/' directory.")
+        else:
+            print("\n❌ Could not find a previous 'last_run_data.json' in 'reports/'. You must run a strategy first.")
+        return
     
     # Create engine
     exchange_type = ExchangeType.BINANCE if args.exchange == 'binance' else ExchangeType.BITGET
@@ -249,7 +271,8 @@ def main():
     engine = TradingEngine(
         mode=EngineMode(args.mode) if args.mode != 'both' else EngineMode.BOTH,
         exchange_type=exchange_type,
-        paper_mode=paper_mode
+        paper_mode=paper_mode,
+        report_mode=args.report
     )
     
     print(f"\n📊 Mode: {args.mode.upper()}")
