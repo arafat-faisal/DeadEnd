@@ -1,0 +1,31 @@
+# Ignore Python compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Ignore virtual environments
+.env
+venv/
+env/
+ENV/
+
+# Ignore databases
+data/*.db
+data/*.sqlite3
+*.db
+
+# Ignore IDE / OS files
+.vscode/
+.idea/
+.DS_Store
+
+# Ignore Streamlit specific
+.streamlit/
+
+# Ignore generated outputs
+output_payload.json
+output.md
+FINAL_OUTPUT_FOR_USER.md
+equity.png
+heatmap.png
+report.pdf
