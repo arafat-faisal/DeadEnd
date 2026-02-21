@@ -98,9 +98,19 @@ class FundingArbStrategy:
                 self._close_positions()
 
     def _fetch_funding_rate(self, executor) -> float:
-        """Helper to fetch current funding rate. Simulated for now."""
-        # Use CCXT in production: executor.exchange.fetch_funding_rate(self.pair)
-        # Returning a simulated slightly positive rate
+        """Helper to fetch current funding rate."""
+        try:
+            if hasattr(executor, 'exchange') and executor.exchange:
+                res = executor.exchange.fetch_funding_rate(self.pair)
+                if res:
+                    if 'fundingRate' in res and res['fundingRate'] is not None:
+                        return float(res['fundingRate'])
+                    elif 'info' in res and 'lastFundingRate' in res['info'] and res['info']['lastFundingRate'] is not None:
+                        return float(res['info']['lastFundingRate'])
+        except Exception as e:
+            logger.warning(f"Failed to fetch funding rate for {self.pair}: {e}")
+            
+        # Simulated fallback for tests or if missing
         return 0.0003
 
     def _open_positions(self, short_on: int, long_on: int, spread: float):

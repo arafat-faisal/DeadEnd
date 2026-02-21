@@ -95,6 +95,7 @@ class TradingEngine:
         self._shutdown_event = threading.Event()
         self._current_signals: List[TradingSignal] = []
         self._active_grids: Dict[str, Any] = {}
+        self._active_arbs: Dict[str, Any] = {}
         
         # Reporting
         self.report_generator = ReportGenerator()
@@ -411,7 +412,8 @@ class TradingEngine:
     def run_trading_loop(
         self,
         interval_seconds: int = 60,
-        max_iterations: int = None
+        max_iterations: int = None,
+        strategies: List[PriorityEntry] = None
     ):
         """
         Main trading loop.
@@ -420,8 +422,8 @@ class TradingEngine:
             interval_seconds: Time between iterations
             max_iterations: Maximum iterations (None = infinite)
         """
-        # Load priority list
-        entries = self.priority_manager.load()
+        # Load priority list if strategies not provided
+        entries = strategies if strategies is not None else self.priority_manager.load()
         
         if not entries:
             logger.warning("No entries in priority list. Run research first!")
@@ -524,6 +526,8 @@ class TradingEngine:
                         st_type = StrategyType.GRID
                     elif st_val == "SCALP":
                         st_type = StrategyType.SCALPING
+                    elif st_val == "ARB":
+                        st_type = StrategyType.ARB_FUNDING
                     else:
                         st_type = StrategyType.SMA_CROSSOVER # Fallback
 
@@ -546,6 +550,28 @@ class TradingEngine:
                             self._active_grids[grid_key] = grid
                         else:
                             self._active_grids[grid_key].update(current_price)
+                        continue # Skip standard signal generation
+
+                    elif st_type == StrategyType.ARB_FUNDING:
+                        # Handle Funding Arb logic
+                        arb_key = f"{entry.pair}_{entry.strategy}"
+                        
+                        if arb_key not in self._active_arbs:
+                            from core.funding_arb import FundingArbStrategy
+                            params = entry.params
+                            params['pair'] = entry.pair
+                            
+                            # Create secondary executor based on opposite exchange
+                            from config.settings import ExchangeType
+                            sec_exchange = ExchangeType.BITGET if self.exchange_type == ExchangeType.BINANCE else ExchangeType.BINANCE
+                            from core.executor import OrderExecutor
+                            sec_executor = OrderExecutor(sec_exchange, self.paper_mode)
+                            
+                            arb = FundingArbStrategy(self.executor, secondary_executor=sec_executor, params=params)
+                            arb.start(current_balance)
+                            self._active_arbs[arb_key] = arb
+                        else:
+                            self._active_arbs[arb_key].update()
                         continue # Skip standard signal generation
 
                     strategy_params = StrategyParams(
@@ -626,6 +652,10 @@ class TradingEngine:
         # Stop all active grids
         for grid_key, grid in self._active_grids.items():
             grid.stop()
+            
+        # Stop all active arbs
+        for arb_key, arb in self._active_arbs.items():
+            arb.stop()
         
         # Log final status
         balance = self.executor.get_balance()

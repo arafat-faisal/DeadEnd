@@ -1,176 +1,20 @@
 {
-  "generated_at": "2026-02-21T08:03:21.064405Z",
-  "count": 10,
+  "generated_at": "2026-02-21T00:00:00Z",
+  "count": 1,
   "strategies": [
     {
       "priority": 1,
       "pair": "BTC/USDT",
-      "strategy": "ARB_FUNDING_0.0010",
+      "strategy": "SMA_5_20",
       "params": {
-        "exchanges": [
-          "binance",
-          "bitget"
-        ],
-        "threshold": 0.001
+        "short_period": 5,
+        "long_period": 20
       },
-      "expected_roi": 0.1297,
-      "sharpe_ratio": 120.36,
-      "max_drawdown": 0,
-      "win_rate": 0.999,
-      "confidence_score": 91.27
-    },
-    {
-      "priority": 2,
-      "pair": "ETH/USDT",
-      "strategy": "ARB_FUNDING_0.0010",
-      "params": {
-        "exchanges": [
-          "binance",
-          "bitget"
-        ],
-        "threshold": 0.001
-      },
-      "expected_roi": 0.1297,
-      "sharpe_ratio": 120.36,
-      "max_drawdown": 0,
-      "win_rate": 0.999,
-      "confidence_score": 91.27
-    },
-    {
-      "priority": 3,
-      "pair": "BIO/USDT",
-      "strategy": "ARB_FUNDING_0.0010",
-      "params": {
-        "exchanges": [
-          "binance",
-          "bitget"
-        ],
-        "threshold": 0.001
-      },
-      "expected_roi": 0.1297,
-      "sharpe_ratio": 120.36,
-      "max_drawdown": 0,
-      "win_rate": 0.999,
-      "confidence_score": 91.27
-    },
-    {
-      "priority": 4,
-      "pair": "SOL/USDT",
-      "strategy": "ARB_FUNDING_0.0010",
-      "params": {
-        "exchanges": [
-          "binance",
-          "bitget"
-        ],
-        "threshold": 0.001
-      },
-      "expected_roi": 0.1297,
-      "sharpe_ratio": 120.36,
-      "max_drawdown": 0,
-      "win_rate": 0.999,
-      "confidence_score": 91.27
-    },
-    {
-      "priority": 5,
-      "pair": "ALLO/USDT",
-      "strategy": "ARB_FUNDING_0.0010",
-      "params": {
-        "exchanges": [
-          "binance",
-          "bitget"
-        ],
-        "threshold": 0.001
-      },
-      "expected_roi": 0.1297,
-      "sharpe_ratio": 120.36,
-      "max_drawdown": 0,
-      "win_rate": 0.999,
-      "confidence_score": 91.27
-    },
-    {
-      "priority": 6,
-      "pair": "DOGE/USDT",
-      "strategy": "ARB_FUNDING_0.0010",
-      "params": {
-        "exchanges": [
-          "binance",
-          "bitget"
-        ],
-        "threshold": 0.001
-      },
-      "expected_roi": 0.1297,
-      "sharpe_ratio": 120.36,
-      "max_drawdown": 0,
-      "win_rate": 0.999,
-      "confidence_score": 91.27
-    },
-    {
-      "priority": 7,
-      "pair": "XRP/USDT",
-      "strategy": "ARB_FUNDING_0.0010",
-      "params": {
-        "exchanges": [
-          "binance",
-          "bitget"
-        ],
-        "threshold": 0.001
-      },
-      "expected_roi": 0.1297,
-      "sharpe_ratio": 120.36,
-      "max_drawdown": 0,
-      "win_rate": 0.999,
-      "confidence_score": 91.27
-    },
-    {
-      "priority": 8,
-      "pair": "KITE/USDT",
-      "strategy": "ARB_FUNDING_0.0010",
-      "params": {
-        "exchanges": [
-          "binance",
-          "bitget"
-        ],
-        "threshold": 0.001
-      },
-      "expected_roi": 0.1297,
-      "sharpe_ratio": 120.36,
-      "max_drawdown": 0,
-      "win_rate": 0.999,
-      "confidence_score": 91.27
-    },
-    {
-      "priority": 9,
-      "pair": "BTC/USDT",
-      "strategy": "ARB_FUNDING_0.0005",
-      "params": {
-        "exchanges": [
-          "binance",
-          "bitget"
-        ],
-        "threshold": 0.0005
-      },
-      "expected_roi": 0.0613,
-      "sharpe_ratio": 58.7,
-      "max_drawdown": 0,
-      "win_rate": 0.999,
-      "confidence_score": 90.59
-    },
-    {
-      "priority": 10,
-      "pair": "ETH/USDT",
-      "strategy": "ARB_FUNDING_0.0005",
-      "params": {
-        "exchanges": [
-          "binance",
-          "bitget"
-        ],
-        "threshold": 0.0005
-      },
-      "expected_roi": 0.0613,
-      "sharpe_ratio": 58.7,
-      "max_drawdown": 0,
-      "win_rate": 0.999,
-      "confidence_score": 90.59
+      "expected_roi": 0.05,
+      "sharpe_ratio": 1.5,
+      "max_drawdown": 0.1,
+      "win_rate": 0.55,
+      "confidence_score": 60
     }
   ]
 }

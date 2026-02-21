@@ -451,7 +451,17 @@ class Backtester:
                 rm = RiskManager(risk_per_trade=0.01)
                 size = rm.calculate_position_size(balance=1000.0, entry_price=entry_price, leverage=lev)
                 
-                pnl_usdt = ((pnl_percent / 100) * size * entry_price / lev) - fee_approx
+                # Special handling for ARB_FUNDING since it's delta-neutral
+                if strategy.strategy_type == StrategyType.ARB_FUNDING:
+                    # Strategy returns are already the exact net percent gain per candle
+                    strat_returns_sum = df['strategy_returns'].iloc[entry_idx:exit_idx+1].sum()
+                    pnl_percent = strat_returns_sum * 100
+                    pnl_usdt = strat_returns_sum * size * entry_price
+                    fee_approx = 0 # Fees baked into strategy_returns
+                    mae_p = 0
+                    mfe_p = strat_returns_sum * 100 * lev
+                else:
+                    pnl_usdt = ((pnl_percent / 100) * size * entry_price / lev) - fee_approx
                 
                 try:
                     entry_time = pd.to_datetime(df.iloc[entry_idx]['timestamp'], unit='ms', utc=True)
@@ -516,6 +526,10 @@ class Backtester:
                 # Exit completely
                 close_and_record(i, price)
                 in_position = False
+                
+        # Close any lingering position at the end
+        if in_position:
+            close_and_record(len(df) - 1, df.iloc[-1]['close'])
                 
         return trades
     

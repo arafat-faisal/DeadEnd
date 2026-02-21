@@ -1,0 +1,2 @@
+trade_id,pair,strategy,side,entry_time,exit_time,entry_price,exit_price,size,pnl_usdt,pnl_percent,fee_usdt,mae_percent,mfe_percent,holding_bars,entry_reason,exit_reason
+BT_1771663898093_0,BTC/USDT,ARB_FUNDING_0.0010,long,2026-01-10T17:00:00+00:00,2026-02-21T08:00:00+00:00,90544.96,67838.8,0.001,11.046485120000005,12.200000000000005,0,0,122.00000000000004,999,signal,signal

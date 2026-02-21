@@ -13535,3 +13535,74 @@
 {"timestamp": "2026-02-21T08:03:48.452389Z", "level": "INFO", "module": "priority_list", "function": "load", "line": 234, "message": "Loaded 10 entries from priority list"}
 {"timestamp": "2026-02-21T08:12:54.052467Z", "level": "INFO", "module": "main", "function": "main", "line": 282, "message": "Extracting best strategy from priority list..."}
 {"timestamp": "2026-02-21T08:12:54.054400Z", "level": "INFO", "module": "priority_list", "function": "load", "line": 234, "message": "Loaded 10 entries from priority list"}
+{"timestamp": "2026-02-21T08:33:04.381384Z", "level": "INFO", "module": "engine", "function": "__init__", "line": 110, "message": "Trading Engine initialized | Mode: trade | Paper: True"}
+{"timestamp": "2026-02-21T08:33:04.382362Z", "level": "INFO", "module": "main", "function": "run_trading_mode", "line": 231, "message": "Starting Trading Mode (PAPER)"}
+{"timestamp": "2026-02-21T08:33:04.383336Z", "level": "INFO", "module": "priority_list", "function": "load", "line": 234, "message": "Loaded 10 entries from priority list"}
+{"timestamp": "2026-02-21T08:33:04.383336Z", "level": "INFO", "module": "engine", "function": "run_trading_loop", "line": 430, "message": "Starting trading loop with 10 strategies"}
+{"timestamp": "2026-02-21T08:33:04.383336Z", "level": "INFO", "module": "engine", "function": "run_trading_loop", "line": 445, "message": "Trading iteration 1"}
+{"timestamp": "2026-02-21T08:33:04.394480Z", "level": "WARNING", "module": "sentiment", "function": "get_sentiment_score", "line": 26, "message": "No CryptoPanic API key found. Returning neutral sentiment (0.0)."}
+{"timestamp": "2026-02-21T08:33:04.395456Z", "level": "INFO", "module": "logger", "function": "balance_update", "line": 133, "message": "Balance: 50.00 USDT (+0.00) | Source: trading_loop"}
+{"timestamp": "2026-02-21T08:33:04.432811Z", "level": "DEBUG", "module": "data_pipeline", "function": "fetch_ohlcv", "line": 107, "message": "Using file cache for BTC/USDT 1h"}
+{"timestamp": "2026-02-21T08:33:04.432811Z", "level": "ERROR", "module": "engine", "function": "_generate_signal", "line": 264, "message": "Signal generation failed for BTC/USDT: 'short_period'"}
+{"timestamp": "2026-02-21T08:33:04.436258Z", "level": "DEBUG", "module": "data_pipeline", "function": "fetch_ohlcv", "line": 107, "message": "Using file cache for ETH/USDT 1h"}
+{"timestamp": "2026-02-21T08:33:04.436776Z", "level": "ERROR", "module": "engine", "function": "_generate_signal", "line": 264, "message": "Signal generation failed for ETH/USDT: 'short_period'"}
+{"timestamp": "2026-02-21T08:33:04.438944Z", "level": "DEBUG", "module": "data_pipeline", "function": "fetch_ohlcv", "line": 107, "message": "Using file cache for BIO/USDT 1h"}
+{"timestamp": "2026-02-21T08:33:04.438944Z", "level": "ERROR", "module": "engine", "function": "_generate_signal", "line": 264, "message": "Signal generation failed for BIO/USDT: 'short_period'"}
+{"timestamp": "2026-02-21T08:33:16.812746Z", "level": "INFO", "module": "engine", "function": "_signal_handler", "line": 114, "message": "Shutdown signal received, stopping gracefully..."}
+{"timestamp": "2026-02-21T08:34:04.439980Z", "level": "INFO", "module": "engine", "function": "run_trading_loop", "line": 575, "message": "Trading loop stopped"}
+{"timestamp": "2026-02-21T08:35:54.209904Z", "level": "INFO", "module": "main", "function": "main", "line": 282, "message": "Extracting best strategy from priority list..."}
+{"timestamp": "2026-02-21T08:35:54.210879Z", "level": "INFO", "module": "priority_list", "function": "load", "line": 234, "message": "Loaded 10 entries from priority list"}
+{"timestamp": "2026-02-21T08:36:08.888962Z", "level": "INFO", "module": "engine", "function": "__init__", "line": 110, "message": "Trading Engine initialized | Mode: trade | Paper: True"}
+{"timestamp": "2026-02-21T08:36:08.889938Z", "level": "INFO", "module": "main", "function": "run_trading_mode", "line": 231, "message": "Starting Trading Mode (PAPER)"}
+{"timestamp": "2026-02-21T08:36:08.890912Z", "level": "INFO", "module": "priority_list", "function": "load", "line": 234, "message": "Loaded 10 entries from priority list"}
+{"timestamp": "2026-02-21T08:36:08.890912Z", "level": "INFO", "module": "engine", "function": "run_trading_loop", "line": 430, "message": "Starting trading loop with 10 strategies"}
+{"timestamp": "2026-02-21T08:36:08.890912Z", "level": "INFO", "module": "engine", "function": "run_trading_loop", "line": 445, "message": "Trading iteration 1"}
+{"timestamp": "2026-02-21T08:36:08.891889Z", "level": "WARNING", "module": "sentiment", "function": "get_sentiment_score", "line": 26, "message": "No CryptoPanic API key found. Returning neutral sentiment (0.0)."}
+{"timestamp": "2026-02-21T08:36:08.892925Z", "level": "INFO", "module": "logger", "function": "balance_update", "line": 133, "message": "Balance: 50.00 USDT (+0.00) | Source: trading_loop"}
+{"timestamp": "2026-02-21T08:36:08.938905Z", "level": "DEBUG", "module": "data_pipeline", "function": "fetch_ohlcv", "line": 107, "message": "Using file cache for BTC/USDT 1h"}
+{"timestamp": "2026-02-21T08:36:08.938905Z", "level": "ERROR", "module": "engine", "function": "_generate_signal", "line": 264, "message": "Signal generation failed for BTC/USDT: 'short_period'"}
+{"timestamp": "2026-02-21T08:36:08.941831Z", "level": "DEBUG", "module": "data_pipeline", "function": "fetch_ohlcv", "line": 107, "message": "Using file cache for ETH/USDT 1h"}
+{"timestamp": "2026-02-21T08:36:08.942346Z", "level": "ERROR", "module": "engine", "function": "_generate_signal", "line": 264, "message": "Signal generation failed for ETH/USDT: 'short_period'"}
+{"timestamp": "2026-02-21T08:36:08.944368Z", "level": "DEBUG", "module": "data_pipeline", "function": "fetch_ohlcv", "line": 107, "message": "Using file cache for BIO/USDT 1h"}
+{"timestamp": "2026-02-21T08:36:08.944368Z", "level": "ERROR", "module": "engine", "function": "_generate_signal", "line": 264, "message": "Signal generation failed for BIO/USDT: 'short_period'"}
+{"timestamp": "2026-02-21T08:36:21.885336Z", "level": "INFO", "module": "engine", "function": "_signal_handler", "line": 114, "message": "Shutdown signal received, stopping gracefully..."}
+{"timestamp": "2026-02-21T08:37:08.409632Z", "level": "INFO", "module": "engine", "function": "__init__", "line": 110, "message": "Trading Engine initialized | Mode: trade | Paper: True"}
+{"timestamp": "2026-02-21T08:37:08.410666Z", "level": "INFO", "module": "main", "function": "run_trading_mode", "line": 231, "message": "Starting Trading Mode (PAPER)"}
+{"timestamp": "2026-02-21T08:37:08.411177Z", "level": "INFO", "module": "priority_list", "function": "load", "line": 234, "message": "Loaded 10 entries from priority list"}
+{"timestamp": "2026-02-21T08:37:08.411177Z", "level": "INFO", "module": "engine", "function": "run_trading_loop", "line": 430, "message": "Starting trading loop with 10 strategies"}
+{"timestamp": "2026-02-21T08:37:08.411177Z", "level": "INFO", "module": "engine", "function": "run_trading_loop", "line": 445, "message": "Trading iteration 1"}
+{"timestamp": "2026-02-21T08:37:08.412324Z", "level": "WARNING", "module": "sentiment", "function": "get_sentiment_score", "line": 26, "message": "No CryptoPanic API key found. Returning neutral sentiment (0.0)."}
+{"timestamp": "2026-02-21T08:37:08.413301Z", "level": "INFO", "module": "logger", "function": "balance_update", "line": 133, "message": "Balance: 50.00 USDT (+0.00) | Source: trading_loop"}
+{"timestamp": "2026-02-21T08:37:08.448243Z", "level": "DEBUG", "module": "data_pipeline", "function": "fetch_ohlcv", "line": 107, "message": "Using file cache for BTC/USDT 1h"}
+{"timestamp": "2026-02-21T08:37:08.448243Z", "level": "ERROR", "module": "engine", "function": "_generate_signal", "line": 264, "message": "Signal generation failed for BTC/USDT: 'short_period'"}
+{"timestamp": "2026-02-21T08:37:08.451223Z", "level": "DEBUG", "module": "data_pipeline", "function": "fetch_ohlcv", "line": 107, "message": "Using file cache for ETH/USDT 1h"}
+{"timestamp": "2026-02-21T08:37:08.451737Z", "level": "ERROR", "module": "engine", "function": "_generate_signal", "line": 264, "message": "Signal generation failed for ETH/USDT: 'short_period'"}
+{"timestamp": "2026-02-21T08:37:08.453985Z", "level": "DEBUG", "module": "data_pipeline", "function": "fetch_ohlcv", "line": 107, "message": "Using file cache for BIO/USDT 1h"}
+{"timestamp": "2026-02-21T08:37:08.453985Z", "level": "ERROR", "module": "engine", "function": "_generate_signal", "line": 264, "message": "Signal generation failed for BIO/USDT: 'short_period'"}
+{"timestamp": "2026-02-21T08:37:23.621462Z", "level": "INFO", "module": "engine", "function": "_signal_handler", "line": 114, "message": "Shutdown signal received, stopping gracefully..."}
+{"timestamp": "2026-02-21T08:40:05.244145Z", "level": "INFO", "module": "engine", "function": "__init__", "line": 110, "message": "Trading Engine initialized | Mode: trade | Paper: True"}
+{"timestamp": "2026-02-21T08:40:05.244663Z", "level": "INFO", "module": "main", "function": "run_trading_mode", "line": 231, "message": "Starting Trading Mode (PAPER)"}
+{"timestamp": "2026-02-21T08:40:05.245642Z", "level": "INFO", "module": "priority_list", "function": "load", "line": 234, "message": "Loaded 1 entries from priority list"}
+{"timestamp": "2026-02-21T08:40:05.245642Z", "level": "INFO", "module": "engine", "function": "run_trading_loop", "line": 430, "message": "Starting trading loop with 1 strategies"}
+{"timestamp": "2026-02-21T08:40:05.245642Z", "level": "INFO", "module": "engine", "function": "run_trading_loop", "line": 445, "message": "Trading iteration 1"}
+{"timestamp": "2026-02-21T08:40:05.246699Z", "level": "WARNING", "module": "sentiment", "function": "get_sentiment_score", "line": 26, "message": "No CryptoPanic API key found. Returning neutral sentiment (0.0)."}
+{"timestamp": "2026-02-21T08:40:05.247763Z", "level": "INFO", "module": "logger", "function": "balance_update", "line": 133, "message": "Balance: 50.00 USDT (+0.00) | Source: trading_loop"}
+{"timestamp": "2026-02-21T08:40:05.293594Z", "level": "DEBUG", "module": "data_pipeline", "function": "fetch_ohlcv", "line": 107, "message": "Using file cache for BTC/USDT 1h"}
+{"timestamp": "2026-02-21T08:41:05.295608Z", "level": "INFO", "module": "engine", "function": "run_trading_loop", "line": 445, "message": "Trading iteration 2"}
+{"timestamp": "2026-02-21T08:41:05.296117Z", "level": "WARNING", "module": "sentiment", "function": "get_sentiment_score", "line": 26, "message": "No CryptoPanic API key found. Returning neutral sentiment (0.0)."}
+{"timestamp": "2026-02-21T08:41:05.297095Z", "level": "INFO", "module": "logger", "function": "balance_update", "line": 133, "message": "Balance: 50.00 USDT (+0.00) | Source: trading_loop"}
+{"timestamp": "2026-02-21T08:41:05.315319Z", "level": "DEBUG", "module": "data_pipeline", "function": "fetch_ohlcv", "line": 96, "message": "Using memory cache for BTC/USDT 1h"}
+{"timestamp": "2026-02-21T08:41:14.603991Z", "level": "INFO", "module": "engine", "function": "_signal_handler", "line": 114, "message": "Shutdown signal received, stopping gracefully..."}
+{"timestamp": "2026-02-21T08:42:05.317178Z", "level": "INFO", "module": "engine", "function": "run_trading_loop", "line": 575, "message": "Trading loop stopped"}
+{"timestamp": "2026-02-21T08:50:41.593167Z", "level": "DEBUG", "module": "data_pipeline", "function": "fetch_ohlcv", "line": 107, "message": "Using file cache for BTC/USDT 1h"}
+{"timestamp": "2026-02-21T08:50:41.600276Z", "level": "INFO", "module": "logger", "function": "strategy_result", "line": 117, "message": "Strategy result: ARB_FUNDING_0.0010 on BTC/USDT | ROI: 12.97% | Sharpe: 120.36 | Drawdown: 0.00% | Win Rate: 99.90%"}
+{"timestamp": "2026-02-21T08:50:41.732162Z", "level": "INFO", "module": "reports", "function": "generate_all", "line": 310, "message": "Full ledger saved to reports\\arb_1month_report_full_ledger.csv"}
+{"timestamp": "2026-02-21T08:50:41.734638Z", "level": "INFO", "module": "reports", "function": "generate_markdown", "line": 388, "message": "Markdown report saved to reports\\arb_1month_report.md"}
+{"timestamp": "2026-02-21T08:50:42.549271Z", "level": "INFO", "module": "reports", "function": "generate_pdf", "line": 507, "message": "PDF report saved to reports\\arb_1month_report.pdf"}
+{"timestamp": "2026-02-21T08:50:42.789867Z", "level": "INFO", "module": "reports", "function": "generate_html", "line": 583, "message": "Interactive HTML report saved to reports\\arb_1month_report.html"}
+{"timestamp": "2026-02-21T08:51:37.974671Z", "level": "DEBUG", "module": "data_pipeline", "function": "fetch_ohlcv", "line": 107, "message": "Using file cache for BTC/USDT 1h"}
+{"timestamp": "2026-02-21T08:51:37.981213Z", "level": "INFO", "module": "logger", "function": "strategy_result", "line": 117, "message": "Strategy result: ARB_FUNDING_0.0010 on BTC/USDT | ROI: 12.97% | Sharpe: 120.36 | Drawdown: 0.00% | Win Rate: 99.90%"}
+{"timestamp": "2026-02-21T08:51:38.119885Z", "level": "INFO", "module": "reports", "function": "generate_all", "line": 310, "message": "Full ledger saved to reports\\arb_1month_report_full_ledger.csv"}
+{"timestamp": "2026-02-21T08:51:38.121378Z", "level": "INFO", "module": "reports", "function": "generate_markdown", "line": 388, "message": "Markdown report saved to reports\\arb_1month_report.md"}
+{"timestamp": "2026-02-21T08:51:38.935485Z", "level": "INFO", "module": "reports", "function": "generate_pdf", "line": 507, "message": "PDF report saved to reports\\arb_1month_report.pdf"}
+{"timestamp": "2026-02-21T08:51:39.178232Z", "level": "INFO", "module": "reports", "function": "generate_html", "line": 583, "message": "Interactive HTML report saved to reports\\arb_1month_report.html"}

@@ -137,6 +137,13 @@ Examples:
         help='Deploy the best strategy: runs 30-min paper, then asks for LIVE.'
     )
     
+    parser.add_argument(
+        '--strategy',
+        type=str,
+        default=None,
+        help='Path to a specific strategy config JSON to run directly (e.g. config/strategies/best_ARB_FUNDING_0.0010_BTCUSDT.json)'
+    )
+    
     return parser.parse_args()
 
 
@@ -218,7 +225,7 @@ def run_research_mode(args, engine: TradingEngine):
     print("Priority list saved to data/priority_list.json")
 
 
-def run_trading_mode(args, engine: TradingEngine):
+def run_trading_mode(args, engine: TradingEngine, strategies=None):
     """Run trading mode"""
     if args.live and not args.paper:
         print("\n⚠️  WARNING: LIVE TRADING MODE ⚠️")
@@ -236,7 +243,7 @@ def run_trading_mode(args, engine: TradingEngine):
         logger.info("Starting Dashboard on http://localhost:8000")
         threading.Thread(target=start_dashboard, kwargs={"host": "0.0.0.0", "port": 8000}, daemon=True).start()
         
-    engine.run_trading_loop(interval_seconds=args.interval)
+    engine.run_trading_loop(interval_seconds=args.interval, strategies=strategies)
 
 
 def main():
@@ -326,6 +333,17 @@ def main():
         print(f"✅ Loaded config: {best_file.name}")
         print(f"   Strategy: {best_config.get('strategy')} | Pair: {best_config.get('pair')}")
         
+        from research.priority_list import PriorityEntry
+        strat_entry = PriorityEntry(
+            strategy=best_config.get('strategy'),
+            pair=best_config.get('pair'),
+            params=best_config.get('params', {}),
+            expected_roi=best_config.get('roi', 0),
+            win_rate=best_config.get('risk_pct', 0),
+            max_drawdown=0,
+            sharpe_ratio=best_config.get('sharpe', 0)
+        )
+        
         print("\n⏳ Starting 30-minute Paper Trading Validation...")
         exchange_type = ExchangeType.BINANCE if args.exchange == 'binance' else ExchangeType.BITGET
         engine_paper = TradingEngine(
@@ -336,7 +354,7 @@ def main():
         )
         
         try:
-            engine_paper.run_trading_loop(interval_seconds=60, max_iterations=30)
+            engine_paper.run_trading_loop(interval_seconds=60, max_iterations=30, strategies=[strat_entry])
         except KeyboardInterrupt:
             print("\n⛔ Paper trading interrupted.")
             return
@@ -357,13 +375,14 @@ def main():
                 paper_mode=False,
                 report_mode='none'
             )
-            engine_live.run_trading_loop(interval_seconds=args.interval)
+            engine_live.run_trading_loop(interval_seconds=args.interval, strategies=[strat_entry])
         else:
             print("Deployment aborted. Staying out of live mode.")
         return
     
     # Create engine
     exchange_type = ExchangeType.BINANCE if args.exchange == 'binance' else ExchangeType.BITGET
+    
     
     engine = TradingEngine(
         mode=EngineMode(args.mode) if args.mode != 'both' else EngineMode.BOTH,
@@ -372,6 +391,30 @@ def main():
         report_mode=args.report
     )
     
+    # Load specific strategy if requested
+    specific_strategies = None
+    if args.strategy:
+        import json
+        from research.priority_list import PriorityEntry
+        strat_path = Path(args.strategy)
+        if strat_path.exists():
+            with open(strat_path, 'r') as f:
+                cfg = json.load(f)
+            strat_entry = PriorityEntry(
+                strategy=cfg.get('strategy'),
+                pair=cfg.get('pair'),
+                params=cfg.get('params', {}),
+                expected_roi=cfg.get('roi', 0),
+                win_rate=cfg.get('risk_pct', 0),
+                max_drawdown=0,
+                sharpe_ratio=cfg.get('sharpe', 0)
+            )
+            specific_strategies = [strat_entry]
+            print(f"\n✅ Targeting specific strategy: {strat_entry.strategy} on {strat_entry.pair}")
+        else:
+            print(f"\n❌ Strategy file not found: {args.strategy}")
+            return
+            
     print(f"\n📊 Mode: {args.mode.upper()}")
     print(f"💰 Trading: {'PAPER' if paper_mode else 'LIVE'}")
     print(f"🏦 Exchange: {args.exchange.upper()}")
@@ -382,14 +425,14 @@ def main():
             run_research_mode(args, engine)
             
         elif args.mode == 'trade':
-            run_trading_mode(args, engine)
+            run_trading_mode(args, engine, strategies=specific_strategies)
             
         elif args.mode == 'both':
             run_research_mode(args, engine)
             print("\n" + "="*50)
             print("Research complete. Starting trading...")
             print("="*50 + "\n")
-            run_trading_mode(args, engine)
+            run_trading_mode(args, engine, strategies=specific_strategies)
             
     except KeyboardInterrupt:
         print("\n\n⛔ Interrupted by user")
