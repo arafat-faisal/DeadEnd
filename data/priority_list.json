@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-02-20T23:57:46.194809Z",
+  "generated_at": "2026-02-21T08:03:21.064405Z",
   "count": 10,
   "strategies": [
     {
@@ -140,24 +140,24 @@
     },
     {
       "priority": 9,
-      "pair": "SNX/USDT",
-      "strategy": "ARB_FUNDING_0.0010",
+      "pair": "BTC/USDT",
+      "strategy": "ARB_FUNDING_0.0005",
       "params": {
         "exchanges": [
           "binance",
           "bitget"
         ],
-        "threshold": 0.001
+        "threshold": 0.0005
       },
-      "expected_roi": 0.1297,
-      "sharpe_ratio": 120.36,
+      "expected_roi": 0.0613,
+      "sharpe_ratio": 58.7,
       "max_drawdown": 0,
       "win_rate": 0.999,
-      "confidence_score": 91.27
+      "confidence_score": 90.59
     },
     {
       "priority": 10,
-      "pair": "BTC/USDT",
+      "pair": "ETH/USDT",
       "strategy": "ARB_FUNDING_0.0005",
       "params": {
         "exchanges": [

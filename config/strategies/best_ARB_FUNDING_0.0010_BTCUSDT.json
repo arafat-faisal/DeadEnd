@@ -9,5 +9,9 @@
         "threshold": 0.001
     },
     "roi": 0.1297,
-    "sharpe": 120.36
+    "sharpe": 120.36,
+    "leverage": 1,
+    "risk_pct": 0.5,
+    "mode": "paper",
+    "position_sizing": "neutral_delta"
 }

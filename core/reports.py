@@ -229,9 +229,19 @@ class ReportGenerator:
         sortino = (mean_return / downside_std * annualizer) if downside_std > 0 else 0.0
 
         # Time metrics
-        runtime_hours = (pd.Timestamp(self.current_data.run_end) - pd.Timestamp(self.current_data.run_start)).total_seconds() / 3600.0
-        if runtime_hours < 0.01:
-            runtime_hours = 960.0  # actual backtest period Jan11-Feb20
+        try:
+            df['entry_time_dt'] = pd.to_datetime(df['entry_time'])
+            actual_runtime = (df['datetime'].max() - df['entry_time_dt'].min()).total_seconds() / 3600.0
+        except:
+            actual_runtime = 0.0
+
+        if actual_runtime > 0.1:
+            runtime_hours = actual_runtime
+        else:
+            runtime_hours = (pd.Timestamp(self.current_data.run_end) - pd.Timestamp(self.current_data.run_start)).total_seconds() / 3600.0
+            if runtime_hours < 0.01:
+                runtime_hours = 960.0  # actual backtest period Jan11-Feb20
+                
         pnl_per_hour = total_pnl / runtime_hours if runtime_hours > 0 else 0.0
 
         # Robustness Score (Monte Carlo)
@@ -242,12 +252,11 @@ class ReportGenerator:
             returns_array = df['pnl_usdt'].values
             for _ in range(paths):
                 mc_returns = np.random.choice(returns_array, size=len(returns_array), replace=True)
-                final_balance = self.current_data.start_balance + mc_returns.sum()
-                if final_balance > 0:
+                if mc_returns.sum() > 0:
                     positive_paths += 1
             robustness_score = (positive_paths / paths) * 100
 
-        return {
+        res = {
             "Total PnL": f"${total_pnl:.2f}",
             "Net % Return": f"{(total_pnl / self.current_data.start_balance * 100):.2f}%",
             "Win Rate": f"{win_rate * 100:.1f}%",
@@ -262,6 +271,26 @@ class ReportGenerator:
             "Runtime": f"{runtime_hours:.1f}h",
             "Robustness Score": f"{robustness_score:.1f}%"
         }
+        
+        # ARB-Specific Beautiful Reports
+        is_arb = False
+        if 'strategy' in df.columns:
+            # check if any strategy contains ARB_FUNDING
+            arb_trades = df[df['strategy'].str.contains('ARB_FUNDING', na=False)]
+            if not arb_trades.empty:
+                is_arb = True
+                total_funding = arb_trades['pnl_usdt'].sum()
+                num_payments = arb_trades['holding_bars'].sum() / 32.0 if arb_trades['holding_bars'].sum() > 0 else len(arb_trades)
+                # assuming 1 payment per 8h, approx per holding bar if 15m is 32 bars
+                num_payments = max(1, int(num_payments))
+                avg_rate_usdt = total_funding / num_payments
+                
+                res["[gold1]ARB Total Funding[/gold1]"] = f"[gold1]${total_funding:.2f}[/gold1]"
+                res["[gold1]ARB Avg Rate/8h[/gold1]"] = f"[gold1]${avg_rate_usdt:.4f}[/gold1]"
+                res["[gold1]ARB Payments[/gold1]"] = f"[gold1]{num_payments}[/gold1]"
+                res["[gold1]ARB % of PnL[/gold1]"] = f"[gold1]{(total_funding / total_pnl * 100) if total_pnl != 0 else 0:.1f}%[/gold1]"
+                
+        return res
 
     def generate_all(self, file_prefix: str = "last_report"):
         """Generates Console, MD, PDF, and HTML all at once."""
@@ -304,8 +333,11 @@ class ReportGenerator:
         kpi_table.add_column("Value", justify="right")
         
         for k, v in metrics.items():
+            if "[gold1]" in k:
+                kpi_table.add_row(k, v)
+                continue
             color = "green" if isinstance(v, str) and ("$" in v and "-" not in v or "%" in v and "-" not in v) else "white"
-            if "-" in str(v): color = "red"
+            if isinstance(v, str) and "-" in v: color = "red"
             kpi_table.add_row(k, f"[{color}]{v}[/{color}]")
             
         self.console.print(kpi_table)
@@ -443,9 +475,11 @@ class ReportGenerator:
                 Story.append(Image(img_data, width=700, height=500))
                 Story.append(PageBreak())
 
-        # Trades List (All trades instead of 50)
-        Story.append(Paragraph("Complete Trade Ledger", styles['Heading2']))
-        trades = sorted(self.current_data.trades, key=lambda x: x.exit_time, reverse=True)
+        # Trades List (50 most recent)
+        Story.append(Paragraph("Trade Ledger (Most Recent 50 Trades)", styles['Heading2']))
+        Story.append(Paragraph(f"Full {len(self.current_data.trades)} trades in CSV: {self.output_dir.name}/{self.current_data.mode}_report_full_ledger.csv", styles['Italic']))
+        Story.append(Spacer(1, 10))
+        trades = sorted(self.current_data.trades, key=lambda x: x.exit_time, reverse=True)[:50]
         
         if trades:
             header = ["Pair", "Side", "Entry", "Exit", "PnL ($)", "MAE (%)", "Dur"]

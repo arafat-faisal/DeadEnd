@@ -131,6 +131,12 @@ Examples:
         help='Clone the best performing strategy to config/strategies for live trading'
     )
     
+    parser.add_argument(
+        '--deploy',
+        action='store_true',
+        help='Deploy the best strategy: runs 30-min paper, then asks for LIVE.'
+    )
+    
     return parser.parse_args()
 
 
@@ -284,17 +290,76 @@ def main():
             strat_name = f"best_{best.strategy}_{best.pair.replace('/', '')}.json"
             out_path = config_dir / strat_name
             
+            is_arb = "ARB_FUNDING" in best.strategy
             with open(out_path, 'w') as f:
                 json.dump({
                     "strategy": best.strategy,
                     "pair": best.pair,
                     "params": best.params,
                     "roi": best.expected_roi,
-                    "sharpe": best.sharpe_ratio
+                    "sharpe": best.sharpe_ratio,
+                    "leverage": 1,
+                    "risk_pct": 0.5,
+                    "mode": "paper",
+                    "position_sizing": "neutral_delta" if is_arb else "standard"
                 }, f, indent=4)
             print(f"\n✅ Cloned best strategy to {out_path} ready for live.")
         else:
             print("\n❌ No strategies found in priority list to clone.")
+        return
+        
+    # Handle deploy pipeline
+    if getattr(args, 'deploy', False):
+        print("\n🚀 DEPLOYMENT PIPELINE INITIATED")
+        import glob
+        config_dir = Path("config/strategies")
+        best_files = list(config_dir.glob("best_*.json"))
+        if not best_files:
+            print("❌ No best strategy config found in config/strategies/. Run --clone-best first.")
+            return
+            
+        best_file = best_files[0]
+        import json
+        with open(best_file, 'r') as f:
+            best_config = json.load(f)
+            
+        print(f"✅ Loaded config: {best_file.name}")
+        print(f"   Strategy: {best_config.get('strategy')} | Pair: {best_config.get('pair')}")
+        
+        print("\n⏳ Starting 30-minute Paper Trading Validation...")
+        exchange_type = ExchangeType.BINANCE if args.exchange == 'binance' else ExchangeType.BITGET
+        engine_paper = TradingEngine(
+            mode=EngineMode.TRADING,
+            exchange_type=exchange_type,
+            paper_mode=True,
+            report_mode='none'
+        )
+        
+        try:
+            engine_paper.run_trading_loop(interval_seconds=60, max_iterations=30)
+        except KeyboardInterrupt:
+            print("\n⛔ Paper trading interrupted.")
+            return
+            
+        print("\n📊 Paper Validation Summary:")
+        balance = engine_paper.executor.get_balance().get('USDT', 0)
+        print(f"Ending Paper Balance: {balance:.2f} USDT")
+        
+        print("\n⚠️  DEPLOYMENT GATE ⚠️")
+        print("Paper validation complete. You are about to deploy with REAL MONEY API KEYS.")
+        confirm = input("Ready for LIVE? Type YES: ")
+        
+        if confirm == 'YES':
+            print("\n🔥 INITIATING LIVE TRADING ENGINE 🔥")
+            engine_live = TradingEngine(
+                mode=EngineMode.TRADING,
+                exchange_type=exchange_type,
+                paper_mode=False,
+                report_mode='none'
+            )
+            engine_live.run_trading_loop(interval_seconds=args.interval)
+        else:
+            print("Deployment aborted. Staying out of live mode.")
         return
     
     # Create engine
