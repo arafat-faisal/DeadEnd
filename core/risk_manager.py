@@ -82,84 +82,15 @@ class RiskManager:
         self._halt_reason = ""
         self._last_alerted_level = RiskLevel.NORMAL
     
-    def calculate_position_size(
-        self,
-        balance: float,
-        entry_price: float,
-        stop_loss_price: float,
-        leverage: int = 1
-    ) -> float:
-        """
-        Calculate position size based on risk parameters.
-        
-        Formula: Position = (Balance * Risk%) / (Entry - StopLoss) / Entry
-        
-        Args:
-            balance: Current account balance
-            entry_price: Expected entry price
-            stop_loss_price: Stop loss price
-            leverage: Leverage multiplier
-        
-        Returns:
-            Position size in base currency
-        """
-        if entry_price <= 0 or stop_loss_price <= 0:
-            return 0.0
-        
-        # Calculate risk amount in USDT
-        risk_amount = balance * self.risk_per_trade
-        
-        # Calculate price risk (distance to stop loss)
-        price_risk = abs(entry_price - stop_loss_price) / entry_price
-        
-        if price_risk == 0:
-            return 0.0
-        
-        # Position size without leverage
-        position_value = risk_amount / price_risk
-        
-        # Apply leverage
-        position_value *= leverage
-        
-        # Convert to base currency amount
-        position_size = position_value / entry_price
-        
-        logger.debug(
-            f"Position sizing: balance={balance}, risk={risk_amount:.2f}, "
-            f"price_risk={price_risk:.2%}, size={position_size:.6f}"
-        )
-        
-        return position_size
-    
-    def calculate_position_size_simple(
-        self,
-        balance: float,
-        leverage: int = 1
-    ) -> float:
-        """
-        Simple position size based on risk per trade without stop loss.
-        Uses a default 2% stop loss distance.
-        
-        Args:
-            balance: Current account balance
-            leverage: Leverage multiplier
-        
-        Returns:
-            Maximum position value in USDT
-        """
-        # Risk amount
-        risk_amount = balance * self.risk_per_trade
-        
-        # Assume 2% price movement for stop
-        default_stop_distance = 0.02
-        
-        # Position value
-        position_value = (risk_amount / default_stop_distance) * leverage
-        
-        # Cap at percentage of balance
-        max_position = balance * 0.25 * leverage  # Max 25% per position
-        
-        return min(position_value, max_position)
+    def calculate_position_size(self, balance: float, entry_price: float, stop_price: float = None, risk_pct: float = 0.01, leverage: int = 10) -> float:
+        if stop_price is None:
+            stop_price = entry_price * 0.95
+        risk_amount = balance * risk_pct
+        risk_per_unit = abs(entry_price - stop_price) * leverage
+        size = risk_amount / risk_per_unit
+        size = round(size, 4)
+        max_size = balance * leverage / entry_price * 0.9
+        return max(0.001, min(size, max_size))
     
     def update_balance(self, new_balance: float, source: str = None) -> RiskStatus:
         """

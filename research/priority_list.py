@@ -140,6 +140,11 @@ class PriorityListManager:
             # Apply win rate filter
             if s['win_rate'] and s['win_rate'] <= 0.12:
                 continue
+                
+            # Auto-Kill: Max DD > 30%
+            if s['max_drawdown'] and s['max_drawdown'] > 0.30:
+                logger.warning(f"KILLED: excessive drawdown for {s['name']} on {s['pair']} ({s['max_drawdown']*100:.1f}%)")
+                continue
             
             confidence = self._calculate_confidence_score(
                 roi=s['roi'] or 0,

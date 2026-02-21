@@ -322,7 +322,7 @@ class Backtester:
                 if df.iloc[i]['signal'] == 1:
                     position = 1
                 elif df.iloc[i]['signal'] == -1:
-                    position = 0
+                    position = -1
                 df.iloc[i, df.columns.get_loc('position')] = position
             
             # Daily returns
@@ -413,11 +413,14 @@ class Backtester:
             timeframe='1h'
         )
         
-    def _extract_trades(self, df: pd.DataFrame, strategy: StrategyParams, pair: str) -> List[TradeRecord]:
+    def _extract_trades(self, df: pd.DataFrame, strategy: StrategyParams, pair: str, seen: set = None) -> List[TradeRecord]:
         """Extract exact trades from a vectorized backtest for reporting."""
         trades = []
         if 'position' not in df.columns:
             return trades
+            
+        if seen is None:
+            seen = set()
             
         df = df.reset_index(drop=True)
         in_position = False
@@ -425,6 +428,7 @@ class Backtester:
         entry_price = 0.0
         mae_min = float('inf')
         mfe_max = 0.0
+        side = "long"
         
         for i in range(len(df)):
             pos = df.iloc[i]['position']
@@ -432,62 +436,86 @@ class Backtester:
             high = df.iloc[i]['high']
             low = df.iloc[i]['low']
             
+            # Helper to close a position and record it
+            def close_and_record(exit_idx, exit_price):
+                lev = 10
+                multiplier = 1 if side == "long" else -1
+                leveraged_pnl = ((exit_price - entry_price) / entry_price) * lev * multiplier
+                fee_approx = (entry_price * 0.001) + (exit_price * 0.001) # 0.1% per leg
+                pnl_percent = leveraged_pnl * 100
+                mae_p = ((mae_min - entry_price) / entry_price) * lev * 100 * multiplier
+                mfe_p = ((mfe_max - entry_price) / entry_price) * lev * 100 * multiplier
+                
+                # Position Sizing based on risk
+                from core.risk_manager import RiskManager
+                rm = RiskManager(risk_per_trade=0.01)
+                size = rm.calculate_position_size(balance=1000.0, entry_price=entry_price, leverage=lev)
+                
+                pnl_usdt = ((pnl_percent / 100) * size * entry_price / lev) - fee_approx
+                
+                try:
+                    entry_time = pd.to_datetime(df.iloc[entry_idx]['timestamp'], unit='ms', utc=True)
+                    exit_time = pd.to_datetime(df.iloc[exit_idx]['timestamp'], unit='ms', utc=True)
+                except Exception:
+                    entry_time = datetime.now()
+                    exit_time = datetime.now()
+                
+                trade_key = (pair, entry_time, side)
+                if trade_key not in seen:
+                    seen.add(trade_key)
+                    tr = TradeRecord(
+                        trade_id=f"BT_{int(time.time()*1000)}_{len(trades)}",
+                        pair=pair,
+                        strategy=strategy.name,
+                        side=side,
+                        entry_time=entry_time,
+                        exit_time=exit_time,
+                        entry_price=entry_price,
+                        exit_price=exit_price,
+                        size=size,
+                        pnl_usdt=pnl_usdt,
+                        pnl_percent=pnl_percent,
+                        fee_usdt=fee_approx,
+                        mae_percent=mae_p,
+                        mfe_percent=mfe_p,
+                        holding_bars=exit_idx - entry_idx,
+                        entry_reason="signal",
+                        exit_reason="signal"
+                    )
+                    trades.append(tr)
+            
             if pos != 0 and not in_position:
                 # Entry
                 in_position = True
                 entry_idx = i
                 entry_price = price
-                mae_min = low
-                mfe_max = high
+                side = "long" if pos > 0 else "short"
+                mae_min = low if side == "long" else high
+                mfe_max = high if side == "long" else low
                 
             elif pos != 0 and in_position:
-                # Holding
-                mae_min = min(mae_min, low)
-                mfe_max = max(mfe_max, high)
+                current_side = "long" if pos > 0 else "short"
+                if current_side != side: # Flipped!
+                    close_and_record(i, price)
+                    # And immediately open new position
+                    entry_idx = i
+                    entry_price = price
+                    side = current_side
+                    mae_min = low if side == "long" else high
+                    mfe_max = high if side == "long" else low
+                else:
+                    # Holding
+                    if side == "long":
+                        mae_min = min(mae_min, low)
+                        mfe_max = max(mfe_max, high)
+                    else:
+                        mae_min = max(mae_min, high)
+                        mfe_max = min(mfe_max, low)
                 
             elif pos == 0 and in_position:
-                # Exit
+                # Exit completely
+                close_and_record(i, price)
                 in_position = False
-                exit_price = price
-                
-                # Assume 10x leverage
-                leveraged_pnl = ((exit_price - entry_price) / entry_price) * 10
-                fee_approx = (entry_price * 0.001) + (exit_price * 0.001) # simple 0.1% per leg
-                pnl_percent = leveraged_pnl * 100
-                mae_percent = ((mae_min - entry_price) / entry_price) * 10 * 100
-                mfe_percent = ((mfe_max - entry_price) / entry_price) * 10 * 100
-                
-                # Assume 1 USDT size allocation equivalent for % scaling
-                size = 1.0 
-                pnl_usdt = ((pnl_percent / 100) * size) - fee_approx
-                
-                try:
-                    entry_time = pd.to_datetime(df.iloc[entry_idx]['timestamp'], unit='ms', utc=True)
-                    exit_time = pd.to_datetime(df.iloc[i]['timestamp'], unit='ms', utc=True)
-                except Exception:
-                    entry_time = datetime.now()
-                    exit_time = datetime.now()
-                
-                tr = TradeRecord(
-                    trade_id=f"BT_{int(time.time()*1000)}_{len(trades)}",
-                    pair=pair,
-                    strategy=strategy.name,
-                    side="long", # simple assumption for vector tests
-                    entry_time=entry_time,
-                    exit_time=exit_time,
-                    entry_price=entry_price,
-                    exit_price=exit_price,
-                    size=size,
-                    pnl_usdt=pnl_usdt,
-                    pnl_percent=pnl_percent,
-                    fee_usdt=fee_approx,
-                    mae_percent=mae_percent,
-                    mfe_percent=mfe_percent,
-                    holding_bars=i - entry_idx,
-                    entry_reason="signal",
-                    exit_reason="signal"
-                )
-                trades.append(tr)
                 
         return trades
     
@@ -609,7 +637,14 @@ class Backtester:
                     
                     if report_generator and hasattr(result, 'trades'):
                         for trade in result.trades:
-                            report_generator.add_trade(trade)
+                            # Use engine's duplicate logic if we want, but Backtester extracted using local `seen`. 
+                            # If we pass a global seen set, it's safer. Let's rely on report_generator global seen.
+                            trade_key = (trade.pair, trade.entry_time, trade.side)
+                            if not hasattr(report_generator, '_seen_trades'):
+                                report_generator._seen_trades = set()
+                            if trade_key not in report_generator._seen_trades:
+                                report_generator._seen_trades.add(trade_key)
+                                report_generator.add_trade(trade)
                 
                 completed += 1
                 if completed % 10 == 0:

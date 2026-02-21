@@ -125,6 +125,12 @@ Examples:
         help='Generate extremely detailed post-run reports: none, full, last (re-render without running)'
     )
     
+    parser.add_argument(
+        '--clone-best',
+        action='store_true',
+        help='Clone the best performing strategy to config/strategies for live trading'
+    )
+    
     return parser.parse_args()
 
 
@@ -263,6 +269,32 @@ def main():
             print("\n✅ Standalone report generation complete. Check 'reports/' directory.")
         else:
             print("\n❌ Could not find a previous 'last_run_data.json' in 'reports/'. You must run a strategy first.")
+    # Handle clone best
+    if getattr(args, 'clone_best', False):
+        from research.priority_list import PriorityListManager
+        import json
+        logger.info("Extracting best strategy from priority list...")
+        pl = PriorityListManager()
+        entries = pl.load()
+        if entries:
+            best = entries[0]
+            config_dir = Path("config/strategies")
+            config_dir.mkdir(parents=True, exist_ok=True)
+            
+            strat_name = f"best_{best.strategy}_{best.pair.replace('/', '')}.json"
+            out_path = config_dir / strat_name
+            
+            with open(out_path, 'w') as f:
+                json.dump({
+                    "strategy": best.strategy,
+                    "pair": best.pair,
+                    "params": best.params,
+                    "roi": best.expected_roi,
+                    "sharpe": best.sharpe_ratio
+                }, f, indent=4)
+            print(f"\n✅ Cloned best strategy to {out_path} ready for live.")
+        else:
+            print("\n❌ No strategies found in priority list to clone.")
         return
     
     # Create engine

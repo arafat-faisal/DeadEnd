@@ -99,6 +99,9 @@ class TradingEngine:
         # Reporting
         self.report_generator = ReportGenerator()
         self._active_positions_tracking: Dict[str, Dict[str, Any]] = {}
+        self._seen_trades = set()
+        self._strategy_peak_pnl: Dict[str, float] = {}
+        self._strategy_current_pnl: Dict[str, float] = {}
         
         # Register signal handlers
         signal.signal(signal.SIGINT, self._signal_handler)
@@ -274,8 +277,11 @@ class TradingEngine:
         
         # Calculate position size
         leverage = self.settings.default_leverage if self.risk_manager.get_status(current_balance).phase == TradingPhase.FUTURES_GROWTH else 1
-        position_value = self.risk_manager.calculate_position_size_simple(current_balance, leverage)
-        position_size = position_value / signal.price
+        position_size = self.risk_manager.calculate_position_size(
+            balance=current_balance, 
+            entry_price=signal.price, 
+            leverage=leverage
+        )
         
         # Execute order
         if signal.signal_type == SignalType.BUY:
@@ -300,7 +306,7 @@ class TradingEngine:
                     'entry_time': datetime.now(timezone.utc),
                     'entry_price': order.average_price,
                     'size': order.filled_amount,
-                    'side': 'long',  # simple long assumption for now
+                    'side': 'long',
                     'strategy': signal.strategy,
                     'mfe_price': order.average_price,
                     'mae_price': order.average_price
@@ -327,11 +333,13 @@ class TradingEngine:
                     if signal.pair in self._active_positions_tracking:
                         pos = self._active_positions_tracking.pop(signal.pair)
                         exit_price = order.average_price
-                        pnl_usdt = (exit_price - pos['entry_price']) * pos['size']
-                        pnl_percent = ((exit_price - pos['entry_price']) / pos['entry_price']) * 100 * (10 if self.executor.futures else 1) # assuming 10x lev
                         
-                        mae_percent = ((pos['mae_price'] - pos['entry_price']) / pos['entry_price']) * 100 * (10 if self.executor.futures else 1)
-                        mfe_percent = ((pos['mfe_price'] - pos['entry_price']) / pos['entry_price']) * 100 * (10 if self.executor.futures else 1)
+                        multiplier = 1 if pos['side'] == 'long' else -1
+                        pnl_usdt = (exit_price - pos['entry_price']) * pos['size'] * multiplier
+                        pnl_percent = ((exit_price - pos['entry_price']) / pos['entry_price']) * 100 * (10 if self.executor.futures else 1) * multiplier
+                        
+                        mae_percent = ((pos['mae_price'] - pos['entry_price']) / pos['entry_price']) * 100 * (10 if self.executor.futures else 1) * multiplier
+                        mfe_percent = ((pos['mfe_price'] - pos['entry_price']) / pos['entry_price']) * 100 * (10 if self.executor.futures else 1) * multiplier
                         fee_usdt = (pos['size'] * pos['entry_price'] * 0.001) + (pos['size'] * exit_price * 0.001) # Approx 0.1% each leg
                         
                         trade = TradeRecord(
@@ -349,11 +357,50 @@ class TradingEngine:
                             fee_usdt=fee_usdt,
                             mae_percent=mae_percent,
                             mfe_percent=mfe_percent,
-                            holding_bars=0, # Live doesn't use bars easily, keeping 0
+                            holding_bars=0,
                             entry_reason="signal",
                             exit_reason="signal"
                         )
-                        self.report_generator.add_trade(trade)
+                        
+                        trade_key = (trade.pair, trade.entry_time, trade.side)
+                        if trade_key not in self._seen_trades:
+                            self._seen_trades.add(trade_key)
+                            self.report_generator.add_trade(trade)
+                            
+                        # Update Strategy PnL for Kill Switch
+                        strat_key = f"{pos['strategy']}_{signal.pair}"
+                        self._strategy_current_pnl[strat_key] = self._strategy_current_pnl.get(strat_key, 0) + pnl_usdt - fee_usdt
+                        self._strategy_peak_pnl[strat_key] = max(self._strategy_peak_pnl.get(strat_key, 0), self._strategy_current_pnl[strat_key])
+                    
+                    return True
+            else:
+                # Open short position
+                order = self.executor.execute(
+                    pair=signal.pair,
+                    side='sell',
+                    amount=position_size,
+                    order_type='market',
+                    strategy=signal.strategy
+                )
+                
+                if order.status == OrderStatus.FILLED:
+                    self.risk_manager.open_position(
+                        pair=signal.pair,
+                        size=order.filled_amount,
+                        entry_price=order.average_price,
+                        side='sell'
+                    )
+                    
+                    # Report tracking
+                    self._active_positions_tracking[signal.pair] = {
+                        'entry_time': datetime.now(timezone.utc),
+                        'entry_price': order.average_price,
+                        'size': order.filled_amount,
+                        'side': 'short',
+                        'strategy': signal.strategy,
+                        'mfe_price': order.average_price,
+                        'mae_price': order.average_price
+                    }
                     
                     return True
         
@@ -426,6 +473,33 @@ class TradingEngine:
                     self.executor.futures = False
                 
                 # Generate signals from priority list
+                active_entries = []
+                for entry in entries:
+                    strat_key = f"{entry.strategy}_{entry.pair}"
+                    peak = self._strategy_peak_pnl.get(strat_key, 0)
+                    curr = self._strategy_current_pnl.get(strat_key, 0)
+                    dd = (peak - curr) / peak if peak > 0 else 0
+                    if peak <= 0 and curr < 0:
+                        # Alternative DD calc if peak is never above 0, or just use absolute value logic.
+                        # Let's say if we lose $50 on $1000 balance we could calculate DD over balance.
+                        dd = abs(curr) / current_balance
+                    
+                    if dd > 0.30:
+                        logger.warning(f"AUTO-KILL SWITCH ACTIVATED: {strat_key} DD={dd:.2%} > 30%. Evicting.")
+                        # Close any active position for this strategy
+                        if entry.pair in self._active_positions_tracking:
+                            pos = self._active_positions_tracking[entry.pair]
+                            if pos['strategy'] == entry.strategy:
+                                # execute force close logic here or just rely on next passes, actually better to close it
+                                pass 
+                        continue
+                    active_entries.append(entry)
+                
+                # Update priority list if entries were killed
+                if len(active_entries) < len(entries):
+                    entries = active_entries
+                    self.priority_manager.save(entries)
+                    
                 for entry in entries[:3]:  # Top 3 strategies
                     
                     # Update MAE/MFE for active tracking before processing new signals

@@ -1,0 +1,13 @@
+{
+    "strategy": "ARB_FUNDING_0.0010",
+    "pair": "BTC/USDT",
+    "params": {
+        "exchanges": [
+            "binance",
+            "bitget"
+        ],
+        "threshold": 0.001
+    },
+    "roi": 0.1297,
+    "sharpe": 120.36
+}

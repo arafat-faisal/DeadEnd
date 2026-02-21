@@ -1,0 +1,10 @@
+{
+    "strategy": "SMA_10_20",
+    "pair": "SOL/USDT",
+    "params": {
+        "long_period": 20,
+        "short_period": 10
+    },
+    "roi": 0.5625,
+    "sharpe": 5.4
+}
